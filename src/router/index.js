@@ -2,8 +2,8 @@
  * @Author: Sid Li
  * @Date: 2025-09-28 16:34:05
  * @LastEditors: Sid Li
- * @LastEditTime: 2025-11-24 11:03:15
- * @FilePath: \robot-blocky-git\src\router\index.js
+ * @LastEditTime: 2025-11-24 23:07:06
+ * @FilePath: \robot-blocky\src\router\index.js
  * @Description:
  */
 import { createWebHashHistory, createRouter } from "vue-router";
@@ -22,9 +22,9 @@ const routes = [
     component: () => import("@/views/load.vue"),
   },
   {
-    path: "/blocky",
-    name: "blocky",
-    component: () => import("@/views/blocky.vue"),
+    path: "/blockly",
+    name: "blockly",
+    component: () => import("@/views/blockly.vue"),
   },
   {
     path: "/load2",

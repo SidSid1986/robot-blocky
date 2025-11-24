@@ -41,8 +41,6 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, reactive } from 'vue'
-
-// 正确导入 Blockly
 import * as Blockly from 'blockly'
 import { javascriptGenerator } from 'blockly/javascript'
 import 'blockly/blocks'
@@ -56,14 +54,12 @@ const executionResult = ref('')
 const jointValues = reactive([0, 0, 0, 0, 0, 0])
 let workspace = null
 
-// 存储当前执行的模块和原始颜色
+// 存储当前执行的模块
 let currentExecutingBlock = null
-let originalColours = new Map() // 存储模块原始颜色
-let highlightTimeout = null
+let isExecuting = false
 
 // 自定义积木块定义
 const createCustomBlocks = () => {
-  // 开始模块 - 改为必须有后续连接
   Blockly.Blocks['robot_start'] = {
     init: function() {
       this.appendDummyInput()
@@ -71,11 +67,9 @@ const createCustomBlocks = () => {
       this.setNextStatement(true, null)
       this.setColour(230)
       this.setTooltip("机械臂程序开始点，必须连接其他模块")
-      this.setHelpUrl("")
     }
   }
 
-  // 设置关节角度模块 - 必须有前后连接
   Blockly.Blocks['set_joints'] = {
     init: function() {
       this.appendDummyInput()
@@ -97,11 +91,9 @@ const createCustomBlocks = () => {
       this.setNextStatement(true, null)
       this.setColour(160)
       this.setTooltip("设置六个关节的角度值 (-180° 到 180°)")
-      this.setHelpUrl("")
     }
   }
 
-  // 打印关节角度模块 - 必须有前后连接
   Blockly.Blocks['print_joints'] = {
     init: function() {
       this.appendDummyInput()
@@ -110,11 +102,9 @@ const createCustomBlocks = () => {
       this.setNextStatement(true, null)
       this.setColour(120)
       this.setTooltip("打印当前设置的关节角度")
-      this.setHelpUrl("")
     }
   }
 
-  // 延时模块 - 必须有前后连接
   Blockly.Blocks['delay'] = {
     init: function() {
       this.appendDummyInput()
@@ -125,19 +115,16 @@ const createCustomBlocks = () => {
       this.setNextStatement(true, null)
       this.setColour(65)
       this.setTooltip("程序暂停指定的秒数，然后继续执行下一个指令")
-      this.setHelpUrl("")
     }
   }
 }
 
 // 自定义代码生成器
 const createCustomGenerators = () => {
-  // 开始模块代码生成
   javascriptGenerator.forBlock['robot_start'] = function(block) {
-    return 'await startProgram("' + block.id + '");\n'
+    return 'startProgram("' + block.id + '");\n'
   }
 
-  // 设置关节角度代码生成
   javascriptGenerator.forBlock['set_joints'] = function(block) {
     const j1 = block.getFieldValue('J1')
     const j2 = block.getFieldValue('J2')
@@ -146,18 +133,16 @@ const createCustomGenerators = () => {
     const j5 = block.getFieldValue('J5')
     const j6 = block.getFieldValue('J6')
     
-    return `await setJoints([${j1}, ${j2}, ${j3}, ${j4}, ${j5}, ${j6}], "${block.id}");\n`
+    return `setJoints([${j1}, ${j2}, ${j3}, ${j4}, ${j5}, ${j6}], "${block.id}");\n`
   }
 
-  // 打印关节角度代码生成
   javascriptGenerator.forBlock['print_joints'] = function(block) {
-    return 'await printJoints("' + block.id + '");\n'
+    return 'printJoints("' + block.id + '");\n'
   }
 
-  // 延时代码生成
   javascriptGenerator.forBlock['delay'] = function(block) {
     const delayTime = block.getFieldValue('DELAY_TIME')
-    return `await delay(${delayTime}, "${block.id}");\n`
+    return `delay(${delayTime}, "${block.id}");\n`
   }
 }
 
@@ -179,7 +164,7 @@ const toolbox = {
   ]
 }
 
-// 高亮显示当前执行的模块（使用CSS类）
+// 高亮显示当前执行的模块 - 修改后的逻辑
 const highlightBlock = (blockId) => {
   // 清除之前的高亮
   clearHighlight()
@@ -189,13 +174,16 @@ const highlightBlock = (blockId) => {
     if (block) {
       currentExecutingBlock = blockId
       
-      // 保存原始颜色
-      originalColours.set(blockId, block.getColour())
-      
-      // 获取SVG元素并添加高亮类
-      const svgGroup = block.getSvgRoot()
-      if (svgGroup) {
-        svgGroup.classList.add('executing-block')
+      // 获取积木块的SVG元素
+      const svgPath = block.getSvgRoot()
+      if (svgPath) {
+        // 直接修改积木块的背景色为红色
+        const blockPath = svgPath.querySelector('.blocklyPath')
+        if (blockPath) {
+          // 保存原始颜色以便恢复
+          blockPath.setAttribute('data-original-fill', blockPath.getAttribute('fill'))
+          blockPath.setAttribute('fill', '#ff6b6b') // 红色背景
+        }
       }
     }
   }
@@ -205,26 +193,16 @@ const highlightBlock = (blockId) => {
 const clearHighlight = () => {
   if (currentExecutingBlock) {
     const block = workspace.getBlockById(currentExecutingBlock)
-    if (block) {
-      // 恢复原始颜色
-      const originalColour = originalColours.get(currentExecutingBlock)
-      if (originalColour) {
-        block.setColour(originalColour)
+    if (block && block.getSvgRoot()) {
+      const svgPath = block.getSvgRoot()
+      const blockPath = svgPath.querySelector('.blocklyPath')
+      if (blockPath && blockPath.hasAttribute('data-original-fill')) {
+        // 恢复原始颜色
+        blockPath.setAttribute('fill', blockPath.getAttribute('data-original-fill'))
+        blockPath.removeAttribute('data-original-fill')
       }
-      
-      // 移除CSS类
-      const svgGroup = block.getSvgRoot()
-      if (svgGroup) {
-        svgGroup.classList.remove('executing-block')
-      }
-      
-      originalColours.delete(currentExecutingBlock)
     }
     currentExecutingBlock = null
-  }
-  if (highlightTimeout) {
-    clearTimeout(highlightTimeout)
-    highlightTimeout = null
   }
 }
 
@@ -232,7 +210,6 @@ const clearHighlight = () => {
 const initBlockly = () => {
   if (!blocklyDiv.value) return
 
-  // 创建自定义积木块
   createCustomBlocks()
   createCustomGenerators()
 
@@ -257,13 +234,11 @@ const initBlockly = () => {
       drag: true,
       wheel: true
     },
-    // 禁用声音和远程媒体
     sounds: false,
     renderer: 'geras',
     theme: Blockly.Themes.Classic
   })
 
-  // 监听工作区变化
   workspace.addChangeListener((event) => {
     if (!event.isUiEvent) {
       generateCode()
@@ -271,11 +246,10 @@ const initBlockly = () => {
   })
 }
 
-// 生成代码 - 只生成从开始模块连接的代码
+// 生成代码
 const generateCode = () => {
   if (workspace) {
     try {
-      // 找到所有开始模块
       const startBlocks = workspace.getTopBlocks(true).filter(block => block.type === 'robot_start')
       
       if (startBlocks.length === 0) {
@@ -285,9 +259,7 @@ const generateCode = () => {
 
       let allCode = ''
       
-      // 为每个开始模块生成代码
       startBlocks.forEach(startBlock => {
-        // 只生成从开始模块连接的代码链
         const code = javascriptGenerator.blockToCode(startBlock)
         if (code) {
           allCode += code + '\n'
@@ -295,7 +267,6 @@ const generateCode = () => {
       })
 
       generatedCode.value = allCode || '// 请连接其他模块到"开始程序"模块'
-      console.log('生成的代码:', generatedCode.value)
     } catch (error) {
       console.error('生成代码错误:', error)
       generatedCode.value = `// 生成代码时出错:\n// ${error.message}`
@@ -303,15 +274,12 @@ const generateCode = () => {
   }
 }
 
-// 开始程序函数
-const startProgram = async (blockId) => {
+// 执行函数
+const startProgram = (blockId) => {
   return new Promise((resolve) => {
     highlightBlock(blockId)
-    const result = "🔰 开始程序执行"
-    executionResult.value += result + '\n'
-    console.log(result)
+    executionResult.value += "🔰 开始程序执行\n"
     
-    // 短暂显示后继续并清除高亮
     setTimeout(() => {
       clearHighlight()
       resolve()
@@ -319,8 +287,7 @@ const startProgram = async (blockId) => {
   })
 }
 
-// 设置关节角度函数
-const setJoints = async (angles, blockId) => {
+const setJoints = (angles, blockId) => {
   return new Promise((resolve) => {
     highlightBlock(blockId)
     
@@ -328,16 +295,11 @@ const setJoints = async (angles, blockId) => {
       angles.forEach((angle, index) => {
         jointValues[index] = parseInt(angle) || 0
       })
-      const result = `🦾 设置关节角度: J1:${angles[0]}° J2:${angles[1]}° J3:${angles[2]}° J4:${angles[3]}° J5:${angles[4]}° J6:${angles[5]}°`
-      executionResult.value += result + '\n'
-      console.log(result)
+      executionResult.value += `🦾 设置关节角度: J1:${angles[0]}° J2:${angles[1]}° J3:${angles[2]}° J4:${angles[3]}° J5:${angles[4]}° J6:${angles[5]}°\n`
     } else {
-      const result = '❌ 错误: 需要6个关节角度值'
-      executionResult.value += result + '\n'
-      console.log(result)
+      executionResult.value += '❌ 错误: 需要6个关节角度值\n'
     }
     
-    // 短暂显示后继续并清除高亮
     setTimeout(() => {
       clearHighlight()
       resolve()
@@ -345,16 +307,12 @@ const setJoints = async (angles, blockId) => {
   })
 }
 
-// 打印关节角度函数
-const printJoints = async (blockId) => {
+const printJoints = (blockId) => {
   return new Promise((resolve) => {
     highlightBlock(blockId)
     
-    const result = `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°`
-    executionResult.value += result + '\n'
-    console.log(result)
+    executionResult.value += `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°\n`
     
-    // 短暂显示后继续并清除高亮
     setTimeout(() => {
       clearHighlight()
       resolve()
@@ -362,16 +320,14 @@ const printJoints = async (blockId) => {
   })
 }
 
-// 延时函数 - 修复：实际等待
-const delay = async (seconds, blockId) => {
+const delay = (seconds, blockId) => {
   return new Promise((resolve) => {
     highlightBlock(blockId)
     
-    const startTime = new Date().getTime()
+    const startTime = Date.now()
     
     const updateTimer = () => {
-      const currentTime = new Date().getTime()
-      const elapsed = (currentTime - startTime) / 1000
+      const elapsed = (Date.now() - startTime) / 1000
       const remaining = (seconds - elapsed).toFixed(1)
       
       executionResult.value = executionResult.value.split('\n')
@@ -386,58 +342,57 @@ const delay = async (seconds, blockId) => {
           .filter(line => !line.includes('⏰ 剩余'))
           .join('\n')
         executionResult.value += `\n✅ 延时 ${seconds} 秒结束`
-        console.log(`✅ 延时 ${seconds} 秒结束`)
         clearHighlight()
         resolve()
       }
     }
     
     executionResult.value += `\n⏱️ 开始延时 ${seconds} 秒`
-    console.log(`⏱️ 开始延时 ${seconds} 秒`)
     updateTimer()
   })
 }
 
 // 执行代码
 const executeCode = async () => {
+  if (isExecuting) {
+    executionResult.value = "❌ 程序正在执行中，请等待完成"
+    return
+  }
+
   try {
-    // 清空之前的执行结果和高亮
+    isExecuting = true
     executionResult.value = "🔄 开始执行程序...\n"
     clearHighlight()
-    
-    console.log('执行代码:', generatedCode.value)
 
-    // 创建执行环境
-    const executeEnv = {
-      startProgram,
-      setJoints,
-      printJoints,
-      delay,
-      console: {
-        log: (...args) => {
-          executionResult.value += args.join(' ') + '\n'
-        }
-      }
-    }
-
-    // 执行生成的代码
     if (generatedCode.value && !generatedCode.value.startsWith('//')) {
       try {
-        // 将代码包装成异步函数
-        const asyncCode = `
-          return (async function() {
-            ${generatedCode.value}
-          })()
-        `
+        const codeLines = generatedCode.value.split('\n').filter(line => line.trim())
         
-        console.log('准备执行代码:', asyncCode)
-        
-        const func = new Function(...Object.keys(executeEnv), asyncCode)
-        await func(...Object.values(executeEnv))
+        for (let i = 0; i < codeLines.length; i++) {
+          const line = codeLines[i].trim()
+          if (!line) continue
+          
+          if (line.includes('startProgram')) {
+            const blockId = line.match(/startProgram\("([^"]+)"\)/)[1]
+            await startProgram(blockId)
+          } else if (line.includes('setJoints')) {
+            const match = line.match(/setJoints\(\[([^\]]+)\], "([^"]+)"\)/)
+            const angles = match[1].split(',').map(Number)
+            const blockId = match[2]
+            await setJoints(angles, blockId)
+          } else if (line.includes('printJoints')) {
+            const blockId = line.match(/printJoints\("([^"]+)"\)/)[1]
+            await printJoints(blockId)
+          } else if (line.includes('delay')) {
+            const match = line.match(/delay\(([^,]+), "([^"]+)"\)/)
+            const delayTime = parseFloat(match[1])
+            const blockId = match[2]
+            await delay(delayTime, blockId)
+          }
+        }
         
         executionResult.value += '✅ 程序执行完成\n'
       } catch (e) {
-        console.error('执行错误:', e)
         executionResult.value += `❌ 执行错误: ${e.message}\n`
         clearHighlight()
       }
@@ -445,26 +400,24 @@ const executeCode = async () => {
       executionResult.value += '❌ 没有可执行的代码\n'
     }
   } catch (error) {
-    console.error('执行错误:', error)
     executionResult.value += `❌ 执行错误: ${error.message}\n`
     clearHighlight()
+  } finally {
+    isExecuting = false
   }
 }
 
-// 清空工作区
+// 其他函数保持不变
 const clearWorkspace = () => {
   if (workspace) {
     workspace.clear()
     generatedCode.value = '// 生成的机械臂指令将显示在这里'
     executionResult.value = ''
-    // 重置关节角度
     jointValues.splice(0, jointValues.length, ...[0, 0, 0, 0, 0, 0])
     clearHighlight()
-    originalColours.clear()
   }
 }
 
-// 创建积木块并设置位置的辅助函数
 const createBlock = (type, x, y) => {
   const block = workspace.newBlock(type)
   block.moveBy(x, y)
@@ -473,17 +426,13 @@ const createBlock = (type, x, y) => {
   return block
 }
 
-// 加载示例 - 包含延迟的示例
 const loadDemo = () => {
   if (!workspace) return
 
   clearWorkspace()
 
   try {
-    // 创建开始模块
     const startBlock = createBlock('robot_start', 50, 50)
-
-    // 创建关节设置模块
     const jointsBlock = createBlock('set_joints', 50, 120)
     jointsBlock.setFieldValue('90', 'J1')
     jointsBlock.setFieldValue('45', 'J2')
@@ -492,28 +441,21 @@ const loadDemo = () => {
     jointsBlock.setFieldValue('-10', 'J5')
     jointsBlock.setFieldValue('5', 'J6')
 
-    // 创建延迟模块
     const delayBlock = createBlock('delay', 50, 220)
     delayBlock.setFieldValue('2', 'DELAY_TIME')
 
-    // 创建打印模块
     const printBlock = createBlock('print_joints', 50, 320)
 
-    console.log('加载示例完成')
-    
-    // 手动连接所有模块
     startBlock.nextConnection.connect(jointsBlock.previousConnection)
     jointsBlock.nextConnection.connect(delayBlock.previousConnection)
     delayBlock.nextConnection.connect(printBlock.previousConnection)
     
     generateCode()
   } catch (error) {
-    console.error('加载示例时出错:', error)
     executionResult.value = `❌ 加载示例错误: ${error.message}`
   }
 }
 
-// 保存工作区
 const saveWorkspace = () => {
   if (workspace) {
     try {
@@ -521,13 +463,11 @@ const saveWorkspace = () => {
       localStorage.setItem('blocklyWorkspace', JSON.stringify(data))
       alert('✅ 工作区已保存！')
     } catch (error) {
-      console.error('保存工作区时出错:', error)
       alert('❌ 保存失败！')
     }
   }
 }
 
-// 加载工作区
 const loadWorkspace = () => {
   if (workspace) {
     try {
@@ -540,13 +480,11 @@ const loadWorkspace = () => {
         alert('❌ 没有找到保存的工作区')
       }
     } catch (error) {
-      console.error('加载工作区时出错:', error)
       alert('❌ 加载失败！')
     }
   }
 }
 
-// 生命周期
 onMounted(() => {
   initBlockly()
   setTimeout(() => {
@@ -563,7 +501,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 样式保持不变 */
 .blockly-demo {
   height: 100vh;
   display: flex;
@@ -721,22 +658,5 @@ pre {
   .joint-values-horizontal {
     justify-content: center;
   }
-}
-</style>
-
-<style>
-/* 全局样式 - 执行中的模块边框高亮 */
-.executing-block {
-  filter: drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 12px #FFA500) !important;
-  transition: filter 0.3s ease-in-out !important;
-}
-
-.executing-block .blocklyPath {
-  stroke-width: 3px !important;
-  stroke: #FFD700 !important;
-}
-
-.executing-block .blocklyPathLight {
-  stroke: #FFA500 !important;
 }
 </style>
