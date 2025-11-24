@@ -58,19 +58,19 @@ let workspace = null
 
 // 自定义积木块定义
 const createCustomBlocks = () => {
-  // 开始模块
+  // 开始模块 - 改为必须有后续连接
   Blockly.Blocks['robot_start'] = {
     init: function() {
       this.appendDummyInput()
         .appendField("🔰 开始程序")
       this.setNextStatement(true, null)
       this.setColour(230)
-      this.setTooltip("机械臂程序开始点")
+      this.setTooltip("机械臂程序开始点，必须连接其他模块")
       this.setHelpUrl("")
     }
   }
 
-  // 设置关节角度模块 - 单行排列，标签在前
+  // 设置关节角度模块 - 必须有前后连接
   Blockly.Blocks['set_joints'] = {
     init: function() {
       this.appendDummyInput()
@@ -96,7 +96,7 @@ const createCustomBlocks = () => {
     }
   }
 
-  // 打印关节角度模块
+  // 打印关节角度模块 - 必须有前后连接
   Blockly.Blocks['print_joints'] = {
     init: function() {
       this.appendDummyInput()
@@ -109,7 +109,7 @@ const createCustomBlocks = () => {
     }
   }
 
-  // 延时模块
+  // 延时模块 - 必须有前后连接
   Blockly.Blocks['delay'] = {
     init: function() {
       this.appendDummyInput()
@@ -129,7 +129,7 @@ const createCustomBlocks = () => {
 const createCustomGenerators = () => {
   // 开始模块代码生成
   javascriptGenerator.forBlock['robot_start'] = function(block) {
-    return 'startProgram();\n'
+    return 'await startProgram();\n'
   }
 
   // 设置关节角度代码生成
@@ -141,18 +141,18 @@ const createCustomGenerators = () => {
     const j5 = block.getFieldValue('J5')
     const j6 = block.getFieldValue('J6')
     
-    return `setJoints([${j1}, ${j2}, ${j3}, ${j4}, ${j5}, ${j6}]);\n`
+    return `await setJoints([${j1}, ${j2}, ${j3}, ${j4}, ${j5}, ${j6}]);\n`
   }
 
   // 打印关节角度代码生成
   javascriptGenerator.forBlock['print_joints'] = function(block) {
-    return 'printJoints();\n'
+    return 'await printJoints();\n'
   }
 
   // 延时代码生成
   javascriptGenerator.forBlock['delay'] = function(block) {
     const delayTime = block.getFieldValue('DELAY_TIME')
-    return `delay(${delayTime});\n`
+    return `await delay(${delayTime});\n`
   }
 }
 
@@ -217,13 +217,31 @@ const initBlockly = () => {
   })
 }
 
-// 生成代码
+// 生成代码 - 只生成从开始模块连接的代码
 const generateCode = () => {
   if (workspace) {
     try {
-      const code = javascriptGenerator.workspaceToCode(workspace)
-      console.log('生成的代码:', code)
-      generatedCode.value = code || '// 没有可执行的积木块'
+      // 找到所有开始模块
+      const startBlocks = workspace.getTopBlocks(true).filter(block => block.type === 'robot_start')
+      
+      if (startBlocks.length === 0) {
+        generatedCode.value = '// 请添加"开始程序"模块并连接其他模块'
+        return
+      }
+
+      let allCode = ''
+      
+      // 为每个开始模块生成代码
+      startBlocks.forEach(startBlock => {
+        // 只生成从开始模块连接的代码链
+        const code = javascriptGenerator.blockToCode(startBlock)
+        if (code) {
+          allCode += code + '\n'
+        }
+      })
+
+      generatedCode.value = allCode || '// 请连接其他模块到"开始程序"模块'
+      console.log('生成的代码:', generatedCode.value)
     } catch (error) {
       console.error('生成代码错误:', error)
       generatedCode.value = `// 生成代码时出错:\n// ${error.message}`
@@ -232,72 +250,95 @@ const generateCode = () => {
 }
 
 // 开始程序函数
-const startProgram = () => {
-  return "🔰 开始程序执行"
+const startProgram = async () => {
+  return new Promise((resolve) => {
+    const result = "🔰 开始程序执行"
+    executionResult.value += result + '\n'
+    console.log(result)
+    resolve()
+  })
 }
 
 // 设置关节角度函数
-const setJoints = (angles) => {
-  if (angles && angles.length === 6) {
-    angles.forEach((angle, index) => {
-      jointValues[index] = parseInt(angle) || 0
-    })
-    return `🦾 设置关节角度: J1:${angles[0]}° J2:${angles[1]}° J3:${angles[2]}° J4:${angles[3]}° J5:${angles[4]}° J6:${angles[5]}°`
-  }
-  return '❌ 错误: 需要6个关节角度值'
+const setJoints = async (angles) => {
+  return new Promise((resolve) => {
+    if (angles && angles.length === 6) {
+      angles.forEach((angle, index) => {
+        jointValues[index] = parseInt(angle) || 0
+      })
+      const result = `🦾 设置关节角度: J1:${angles[0]}° J2:${angles[1]}° J3:${angles[2]}° J4:${angles[3]}° J5:${angles[4]}° J6:${angles[5]}°`
+      executionResult.value += result + '\n'
+      console.log(result)
+    } else {
+      const result = '❌ 错误: 需要6个关节角度值'
+      executionResult.value += result + '\n'
+      console.log(result)
+    }
+    resolve()
+  })
 }
 
 // 打印关节角度函数
-const printJoints = () => {
-  return `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°`
+const printJoints = async () => {
+  return new Promise((resolve) => {
+    const result = `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°`
+    executionResult.value += result + '\n'
+    console.log(result)
+    resolve()
+  })
 }
 
-// 延时函数
-const delay = (seconds) => {
-  return `⏱️ 延时 ${seconds} 秒`
+// 延时函数 - 修复：实际等待
+const delay = async (seconds) => {
+  return new Promise((resolve) => {
+    const startTime = new Date().getTime()
+    
+    const updateTimer = () => {
+      const currentTime = new Date().getTime()
+      const elapsed = (currentTime - startTime) / 1000
+      const remaining = (seconds - elapsed).toFixed(1)
+      
+      executionResult.value = executionResult.value.split('\n')
+        .filter(line => !line.includes('⏰ 剩余'))
+        .join('\n')
+      
+      if (remaining > 0) {
+        executionResult.value += `\n⏰ 剩余 ${remaining} 秒...`
+        setTimeout(updateTimer, 100)
+      } else {
+        executionResult.value = executionResult.value.split('\n')
+          .filter(line => !line.includes('⏰ 剩余'))
+          .join('\n')
+        executionResult.value += `\n✅ 延时 ${seconds} 秒结束`
+        console.log(`✅ 延时 ${seconds} 秒结束`)
+        resolve()
+      }
+    }
+    
+    executionResult.value += `\n⏱️ 开始延时 ${seconds} 秒`
+    console.log(`⏱️ 开始延时 ${seconds} 秒`)
+    updateTimer()
+  })
 }
 
 // 执行代码
 const executeCode = async () => {
   try {
-    let output = []
-    executionResult.value = "🔄 开始执行程序..."
+    // 清空之前的执行结果
+    executionResult.value = "🔄 开始执行程序...\n"
     
     console.log('执行代码:', generatedCode.value)
 
     // 创建执行环境
     const executeEnv = {
-      startProgram: () => {
-        const result = startProgram()
-        output.push(result)
-        executionResult.value = output.join('\n')
-        console.log('执行了 startProgram')
-      },
-      setJoints: (angles) => {
-        const result = setJoints(angles)
-        output.push(result)
-        executionResult.value = output.join('\n')
-        console.log('执行了 setJoints:', angles)
-      },
-      printJoints: () => {
-        const result = printJoints()
-        output.push(result)
-        executionResult.value = output.join('\n')
-        console.log('执行了 printJoints')
-      },
-      delay: async (seconds) => {
-        const result = delay(seconds)
-        output.push(result)
-        executionResult.value = output.join('\n')
-        
-        // 实际延时效果
-        output.push(`⏳ 等待 ${seconds} 秒...`)
-        executionResult.value = output.join('\n')
-        
-        await new Promise(resolve => setTimeout(resolve, seconds * 1000))
-        
-        output.push(`✅ 等待结束`)
-        executionResult.value = output.join('\n')
+      startProgram,
+      setJoints,
+      printJoints,
+      delay,
+      console: {
+        log: (...args) => {
+          executionResult.value += args.join(' ') + '\n'
+        }
       }
     }
 
@@ -316,19 +357,17 @@ const executeCode = async () => {
         const func = new Function(...Object.keys(executeEnv), asyncCode)
         await func(...Object.values(executeEnv))
         
-        output.push('✅ 程序执行完成')
-        executionResult.value = output.join('\n')
+        executionResult.value += '✅ 程序执行完成\n'
       } catch (e) {
         console.error('执行错误:', e)
-        output.push(`❌ 执行错误: ${e.message}`)
-        executionResult.value = output.join('\n')
+        executionResult.value += `❌ 执行错误: ${e.message}\n`
       }
     } else {
-      executionResult.value = '❌ 没有可执行的代码'
+      executionResult.value += '❌ 没有可执行的代码\n'
     }
   } catch (error) {
     console.error('执行错误:', error)
-    executionResult.value = `❌ 执行错误: ${error.message}`
+    executionResult.value += `❌ 执行错误: ${error.message}\n`
   }
 }
 
@@ -352,7 +391,7 @@ const createBlock = (type, x, y) => {
   return block
 }
 
-// 加载示例
+// 加载示例 - 包含延迟的示例
 const loadDemo = () => {
   if (!workspace) return
 
@@ -371,10 +410,20 @@ const loadDemo = () => {
     jointsBlock.setFieldValue('-10', 'J5')
     jointsBlock.setFieldValue('5', 'J6')
 
+    // 创建延迟模块
+    const delayBlock = createBlock('delay', 50, 220)
+    delayBlock.setFieldValue('3', 'DELAY_TIME')
+
     // 创建打印模块
-    const printBlock = createBlock('print_joints', 50, 220)
+    const printBlock = createBlock('print_joints', 50, 320)
 
     console.log('加载示例完成')
+    
+    // 手动连接所有模块
+    startBlock.nextConnection.connect(jointsBlock.previousConnection)
+    jointsBlock.nextConnection.connect(delayBlock.previousConnection)
+    delayBlock.nextConnection.connect(printBlock.previousConnection)
+    
     generateCode()
   } catch (error) {
     console.error('加载示例时出错:', error)
@@ -431,6 +480,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .blockly-demo {
   height: 100vh;
   display: flex;
@@ -534,7 +584,7 @@ pre {
   font-size: 12px;
   margin-bottom: 10px;
   line-height: 1.4;
-  max-height: 200px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
