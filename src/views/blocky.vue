@@ -56,8 +56,9 @@ const executionResult = ref('')
 const jointValues = reactive([0, 0, 0, 0, 0, 0])
 let workspace = null
 
-// 存储当前执行的模块
+// 存储当前执行的模块和原始颜色
 let currentExecutingBlock = null
+let originalColours = new Map() // 存储模块原始颜色
 let highlightTimeout = null
 
 // 自定义积木块定义
@@ -178,35 +179,24 @@ const toolbox = {
   ]
 }
 
-// 高亮显示当前执行的模块
+// 高亮显示当前执行的模块（使用CSS类）
 const highlightBlock = (blockId) => {
   // 清除之前的高亮
-  if (currentExecutingBlock) {
-    const prevBlock = workspace.getBlockById(currentExecutingBlock)
-    if (prevBlock) {
-      prevBlock.setColour(prevBlock.getColour())
-    }
-  }
-  
-  // 清除之前的定时器
-  if (highlightTimeout) {
-    clearTimeout(highlightTimeout)
-  }
+  clearHighlight()
   
   if (blockId) {
     const block = workspace.getBlockById(blockId)
     if (block) {
       currentExecutingBlock = blockId
-      // 闪烁效果：黄色边框
-      block.setColour('#FFD700')
       
-      // 3秒后恢复原色（防止延迟过长时一直高亮）
-      highlightTimeout = setTimeout(() => {
-        if (currentExecutingBlock === blockId) {
-          block.setColour(block.getColour())
-          currentExecutingBlock = null
-        }
-      }, 3000)
+      // 保存原始颜色
+      originalColours.set(blockId, block.getColour())
+      
+      // 获取SVG元素并添加高亮类
+      const svgGroup = block.getSvgRoot()
+      if (svgGroup) {
+        svgGroup.classList.add('executing-block')
+      }
     }
   }
 }
@@ -216,7 +206,19 @@ const clearHighlight = () => {
   if (currentExecutingBlock) {
     const block = workspace.getBlockById(currentExecutingBlock)
     if (block) {
-      block.setColour(block.getColour())
+      // 恢复原始颜色
+      const originalColour = originalColours.get(currentExecutingBlock)
+      if (originalColour) {
+        block.setColour(originalColour)
+      }
+      
+      // 移除CSS类
+      const svgGroup = block.getSvgRoot()
+      if (svgGroup) {
+        svgGroup.classList.remove('executing-block')
+      }
+      
+      originalColours.delete(currentExecutingBlock)
     }
     currentExecutingBlock = null
   }
@@ -309,10 +311,11 @@ const startProgram = async (blockId) => {
     executionResult.value += result + '\n'
     console.log(result)
     
-    // 短暂显示后继续
+    // 短暂显示后继续并清除高亮
     setTimeout(() => {
+      clearHighlight()
       resolve()
-    }, 500)
+    }, 800)
   })
 }
 
@@ -334,10 +337,11 @@ const setJoints = async (angles, blockId) => {
       console.log(result)
     }
     
-    // 短暂显示后继续
+    // 短暂显示后继续并清除高亮
     setTimeout(() => {
+      clearHighlight()
       resolve()
-    }, 800)
+    }, 1000)
   })
 }
 
@@ -350,10 +354,11 @@ const printJoints = async (blockId) => {
     executionResult.value += result + '\n'
     console.log(result)
     
-    // 短暂显示后继续
+    // 短暂显示后继续并清除高亮
     setTimeout(() => {
+      clearHighlight()
       resolve()
-    }, 500)
+    }, 800)
   })
 }
 
@@ -382,6 +387,7 @@ const delay = async (seconds, blockId) => {
           .join('\n')
         executionResult.value += `\n✅ 延时 ${seconds} 秒结束`
         console.log(`✅ 延时 ${seconds} 秒结束`)
+        clearHighlight()
         resolve()
       }
     }
@@ -430,11 +436,6 @@ const executeCode = async () => {
         await func(...Object.values(executeEnv))
         
         executionResult.value += '✅ 程序执行完成\n'
-        
-        // 执行完成后清除高亮
-        setTimeout(() => {
-          clearHighlight()
-        }, 1000)
       } catch (e) {
         console.error('执行错误:', e)
         executionResult.value += `❌ 执行错误: ${e.message}\n`
@@ -459,6 +460,7 @@ const clearWorkspace = () => {
     // 重置关节角度
     jointValues.splice(0, jointValues.length, ...[0, 0, 0, 0, 0, 0])
     clearHighlight()
+    originalColours.clear()
   }
 }
 
@@ -492,7 +494,7 @@ const loadDemo = () => {
 
     // 创建延迟模块
     const delayBlock = createBlock('delay', 50, 220)
-    delayBlock.setFieldValue('3', 'DELAY_TIME')
+    delayBlock.setFieldValue('2', 'DELAY_TIME')
 
     // 创建打印模块
     const printBlock = createBlock('print_joints', 50, 320)
@@ -719,5 +721,22 @@ pre {
   .joint-values-horizontal {
     justify-content: center;
   }
+}
+</style>
+
+<style>
+/* 全局样式 - 执行中的模块边框高亮 */
+.executing-block {
+  filter: drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 12px #FFA500) !important;
+  transition: filter 0.3s ease-in-out !important;
+}
+
+.executing-block .blocklyPath {
+  stroke-width: 3px !important;
+  stroke: #FFD700 !important;
+}
+
+.executing-block .blocklyPathLight {
+  stroke: #FFA500 !important;
 }
 </style>
