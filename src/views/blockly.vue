@@ -57,6 +57,7 @@ import * as Blockly from "blockly";
 import { javascriptGenerator } from "blockly/javascript";
 import "blockly/blocks";
 
+const codeArr = ref([]);
 // DOM 引用
 const blocklyDiv = ref(null);
 
@@ -318,7 +319,9 @@ const setJoints = (angles, blockId) => {
       executionResult.value += "❌ 错误: 需要6个关节角度值\n";
     }
     console.log(angles);
-    // 执行设置关节角度的逻辑
+
+    // 添加代码到数组
+    codeArr.value = angles
 
     setTimeout(() => {
       clearHighlight();
@@ -332,6 +335,8 @@ const printJoints = (blockId) => {
     highlightBlock(blockId);
 
     executionResult.value += `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°\n`;
+
+    sendCode()
 
     setTimeout(() => {
       clearHighlight();
@@ -458,12 +463,12 @@ const loadDemo = () => {
   try {
     const startBlock = createBlock("robot_start", 50, 50);
     const jointsBlock = createBlock("set_joints", 50, 120);
-    jointsBlock.setFieldValue("90", "J1");
-    jointsBlock.setFieldValue("45", "J2");
-    jointsBlock.setFieldValue("-30", "J3");
-    jointsBlock.setFieldValue("15", "J4");
-    jointsBlock.setFieldValue("-10", "J5");
-    jointsBlock.setFieldValue("5", "J6");
+    jointsBlock.setFieldValue("-83.08", "J1");
+    jointsBlock.setFieldValue("-24.64", "J2");
+    jointsBlock.setFieldValue("-83.08", "J3");
+    jointsBlock.setFieldValue("-83.08", "J4");
+    jointsBlock.setFieldValue("-74.48", "J5");
+    jointsBlock.setFieldValue("-111.73", "J6");
 
     const delayBlock = createBlock("delay", 50, 220);
     delayBlock.setFieldValue("2", "DELAY_TIME");
@@ -507,6 +512,12 @@ const loadWorkspace = () => {
       alert("❌ 加载失败！");
     }
   }
+};
+
+const sendCode = () => {
+  // 模拟发送代码到机械臂
+  console.log("发送关节角度到机械臂:", codeArr.value);
+  
 };
 
 onMounted(() => {
@@ -701,6 +712,5 @@ pre {
 .robot-model-container {
   width: 30vw;
   height: 100%;
-  background-color: red;
 }
 </style>

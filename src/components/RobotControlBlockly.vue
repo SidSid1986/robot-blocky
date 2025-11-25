@@ -21,6 +21,11 @@
         <Refresh style="width: 1em; height: 1em; margin-right: 8px" />
         机械臂复位
       </el-button>
+
+      <el-button @click="startDemo" type="primary" style="margin-left: 10px">
+        <VideoPlay style="width: 1em; height: 1em; margin-right: 8px" />
+        开始演示
+      </el-button>
     </div>
   </div>
 </template>
@@ -193,14 +198,93 @@ const smoothDemoLoop = () => {
 };
 
 /**
- * 开始演示
+ * 开始演示 - 逐步改变关节值到目标位置
  */
 const startDemo = () => {
   if (isDemoRunning.value) return;
+
+  // 目标关节值（你要的弧度值）
+  const targetPositions = [-1.45, -0.43, 1.45, -1.45, -1.3, -1.95];
+
+  // 检查是否已经在目标位置
+  const isAtTarget = jointValues.value.every(
+    (current, index) => Math.abs(current - targetPositions[index]) < 0.01
+  );
+
+  if (isAtTarget) {
+    console.log("已经在目标位置，无需移动");
+    return;
+  }
+
   isDemoRunning.value = true;
   currentFrameIndex.value = 0;
-  smoothDemoLoop(); // 开始插值循环
+
+  // 使用插值动画逐步移动到目标位置
+  smoothDemoLoopToTarget(targetPositions);
 };
+
+/**
+ * 平滑插值到目标位置
+ */
+const smoothDemoLoopToTarget = (targetPositions) => {
+  // 插值参数
+  const lerpFactor = 0.05; // 调整这个值可以改变动画速度
+  const stepSize = 0.1; // 步长
+
+  const animate = () => {
+    if (!isDemoRunning.value) return;
+
+    let allReached = true;
+
+    // 对每个关节进行插值
+    const newJointValues = jointValues.value.map((current, index) => {
+      const target = targetPositions[index];
+      const difference = target - current;
+
+      // 如果差距很小，直接设为目标值
+      if (Math.abs(difference) < stepSize) {
+        return target;
+      }
+
+      allReached = false;
+
+      // 按步长递增/递减
+      if (difference > 0) {
+        return Math.min(current + stepSize, target);
+      } else {
+        return Math.max(current - stepSize, target);
+      }
+    });
+
+    // 更新当前关节值
+    jointValues.value = newJointValues;
+
+    // 发送更新到父组件
+    emit("joint-change", {
+      jointValues: newJointValues.map(Number),
+    });
+
+    if (allReached) {
+      // 到达目标位置
+      console.log("✅ 已到达目标位置");
+      isDemoRunning.value = false;
+
+      // 显示最终的角度值（转换为度数）
+      const degrees = targetPositions.map((rad) =>
+        ((rad * 180) / Math.PI).toFixed(2)
+      );
+      console.log("目标位置（度）:", degrees);
+      console.log("目标位置（弧度）:", targetPositions);
+    } else {
+      // 继续动画
+      requestAnimationFrame(animate);
+    }
+  };
+
+  // 开始动画
+  animate();
+};
+
 onMounted(() => {
   // console.log(demoTrajectory);
 });
