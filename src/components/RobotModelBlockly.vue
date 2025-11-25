@@ -10,6 +10,7 @@
         @joint-change="handleJointChange"
         @gripper-change="handleGripperChange"
         @reset-all="resetAllJoints"
+        :jointArr="jointArr"
       />
 
       <!-- 轨迹记录控制面板 -->
@@ -80,6 +81,49 @@ import {
 } from "three/examples/jsm/renderers/CSS2DRenderer";
 import URDFLoader from "urdf-loader";
 import RobotControlBlockly from "./RobotControlBlockly.vue"; // 确保该组件路径正确
+const props = defineProps({
+  codeArr: {
+    type: Array,
+    default: () => [],
+  },
+});
+
+const jointArr = ref([]);
+const translateJoint = (codeArr) => {
+  // 角度转换rad
+  if (!Array.isArray(codeArr) || codeArr.length !== 6) {
+    console.error("请输入包含6个角度值的数组");
+    return null;
+  }
+
+  // 角度转弧度：弧度 = 角度 × (π / 180)
+  const radianArr = codeArr.map((angle) => {
+    // 确保输入是数字
+    const numAngle = parseFloat(angle);
+    if (isNaN(numAngle)) {
+      console.error("角度值必须是数字");
+      return 0;
+    }
+    // 转换为弧度
+    return numAngle * (Math.PI / 180);
+  });
+  console.log("角度数组:", codeArr);
+  console.log("弧度数组:", radianArr);
+
+  jointArr.value = radianArr.map((rad, index) => {
+    return rad.toFixed(3);
+  });
+
+  console.log("弧度数组转换后的角度数组:", jointArr.value);
+  return radianArr;
+};
+watch(
+  () => props.codeArr,
+  (newVal) => {
+    translateJoint(newVal);
+  },
+  { deep: true, immediate: true }
+);
 
 // 鼠标点击相关
 const raycaster = new THREE.Raycaster();

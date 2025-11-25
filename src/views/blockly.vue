@@ -44,6 +44,7 @@
         <RobotModelBlockly
           :joint-angles="jointValues"
           :highlight-block-id="currentExecutingBlock"
+          :codeArr="codeArr"
         />
       </div>
     </div>
@@ -321,7 +322,7 @@ const setJoints = (angles, blockId) => {
     console.log(angles);
 
     // 添加代码到数组
-    codeArr.value = angles
+    codeArr.value = angles;
 
     setTimeout(() => {
       clearHighlight();
@@ -336,7 +337,7 @@ const printJoints = (blockId) => {
 
     executionResult.value += `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°\n`;
 
-    sendCode()
+    sendCode();
 
     setTimeout(() => {
       clearHighlight();
@@ -465,7 +466,7 @@ const loadDemo = () => {
     const jointsBlock = createBlock("set_joints", 50, 120);
     jointsBlock.setFieldValue("-83.08", "J1");
     jointsBlock.setFieldValue("-24.64", "J2");
-    jointsBlock.setFieldValue("-83.08", "J3");
+    jointsBlock.setFieldValue("83.08", "J3");
     jointsBlock.setFieldValue("-83.08", "J4");
     jointsBlock.setFieldValue("-74.48", "J5");
     jointsBlock.setFieldValue("-111.73", "J6");
@@ -517,7 +518,6 @@ const loadWorkspace = () => {
 const sendCode = () => {
   // 模拟发送代码到机械臂
   console.log("发送关节角度到机械臂:", codeArr.value);
-  
 };
 
 onMounted(() => {

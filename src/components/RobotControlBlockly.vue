@@ -31,10 +31,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { Refresh, VideoPlay } from "@element-plus/icons-vue"; // 引入刷新图标
 import { ElButton } from "element-plus"; // 引入 Element Plus 按钮组件
 import demoTrajectory from "./demo-trajectory.json";
+
+const props = defineProps({
+  jointArr: {
+    type: Array,
+    default: () => [],
+  },
+});
 
 // 定义组件向父级传递的事件
 const emit = defineEmits(["joint-change", "gripper-change", "reset-all"]);
@@ -200,11 +207,13 @@ const smoothDemoLoop = () => {
 /**
  * 开始演示 - 逐步改变关节值到目标位置
  */
-const startDemo = () => {
+const startDemo = (jointArr) => {
   if (isDemoRunning.value) return;
 
-  // 目标关节值（你要的弧度值）
-  const targetPositions = [-1.45, -0.43, 1.45, -1.45, -1.3, -1.95];
+  // 目标关节值demo
+  // const targetPositions = [-1.45, -0.43, 1.45, -1.45, -1.3, -1.95];
+
+  const targetPositions = jointArr;
 
   // 检查是否已经在目标位置
   const isAtTarget = jointValues.value.every(
@@ -284,6 +293,16 @@ const smoothDemoLoopToTarget = (targetPositions) => {
   // 开始动画
   animate();
 };
+
+watch(
+  () => props.jointArr,
+  (newVal) => {
+    if (newVal.length > 0) {
+      startDemo(newVal);
+    }
+  },
+  { deep: true, immediate: true }
+);
 
 onMounted(() => {
   // console.log(demoTrajectory);
