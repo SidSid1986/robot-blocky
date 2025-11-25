@@ -17,11 +17,6 @@
     <!-- 夹爪控制 -->
 
     <div class="button-area">
-      <hr />
-      <!-- <el-button @click="startDemo" type="success">
-          <VideoPlay style="width: 1em; height: 1em; margin-right: 8px" />
-          开始码垛操作
-        </el-button> -->
       <el-button @click="robotReset" type="warning">
         <Refresh style="width: 1em; height: 1em; margin-right: 8px" />
         机械臂复位
@@ -94,9 +89,6 @@ const jointValues = ref(
   ].map(Number)
 );
 
-// 夹爪关节值
-const gripperValue = ref(Number(0.0));
-
 // 所有关节的初始位置定义，用于复位时传递给父组件
 
 const INITIAL_POSITIONS = {
@@ -108,8 +100,6 @@ const INITIAL_POSITIONS = {
   joint6: 0.0,
   joint7: 0.0, // 夹爪关节
 };
-
-// 每个子数组包含 6 个数字（单位：弧度），依次对应：
 
 let isDemoRunning = ref(false); // 防止重复点击
 
@@ -128,9 +118,6 @@ const robotReset = () => {
     0.0, // wrist2_joint
     0.0, // wrist3_joint
   ];
-
-  // 重置夹爪为闭合状态
-  gripperValue.value = 0.0;
 
   // 向父组件发送复位事件，并传递所有关节的初始值
   emit("reset-all", INITIAL_POSITIONS);
@@ -158,16 +145,6 @@ const updateJoint = (jointName, value, jointValues) => {
   emit("joint-change", {
     jointValues: jointValues.map(Number), // 确保是数字类型
   });
-};
-
-/**
- * 更新夹爪关节
- */
-const updateGripper = (value) => {
-  const numValue = Number(value);
-  if (!isNaN(numValue)) {
-    emit("gripper-change", value); // 传递夹爪值
-  }
 };
 
 /**
@@ -224,7 +201,6 @@ const startDemo = () => {
   currentFrameIndex.value = 0;
   smoothDemoLoop(); // 开始插值循环
 };
-
 onMounted(() => {
   // console.log(demoTrajectory);
 });
@@ -244,8 +220,8 @@ onMounted(() => {
   margin-bottom: 15px;
   display: flex;
   flex-direction: row;
-  align-items: center;
   justify-content: flex-start;
+  align-items: center;
 }
 
 /* 滑动条标签 */

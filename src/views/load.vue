@@ -2,7 +2,7 @@
  * @Author: Sid Li
  * @Date: 2025-10-07 11:02:41
  * @LastEditors: Sid Li
- * @LastEditTime: 2025-11-25 09:13:01
+ * @LastEditTime: 2025-11-25 14:32:14
  * @FilePath: \robot-blocky-git\src\views\load.vue
  * @Description: 
 -->
@@ -24,8 +24,8 @@
   <div class="container">
     <!-- <BallOne @getTrajectory="getTrajectory" /> -->
 
-    <!-- <RobotModel /> -->
-    <RobotModelBlockly />
+    <RobotModel />
+    <!-- <RobotModelBlockly /> -->
   </div>
 </template>
 

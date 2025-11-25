@@ -178,14 +178,16 @@ const upBones = () => {
 
     // 保存每个关节对应的 Mesh，以及生成的球体和线条，方便后续更新
     virtualJointGroup.jointMeshes = []; // 存储球体
-    virtualJointGroup.boneLines = [];  // 存储线条
+    virtualJointGroup.boneLines = []; // 存储线条
 
     // 遍历每个关节，创建球体，暂不连线（下一轮再连）
     jointNames.forEach((linkName, index) => {
       const linkMesh = robot.getObjectByName(linkName);
 
       if (!linkMesh) {
-        console.warn(`未找到 Link（关节对应的 Mesh）: ${linkName}，请检查模型结构！`);
+        console.warn(
+          `未找到 Link（关节对应的 Mesh）: ${linkName}，请检查模型结构！`
+        );
         return;
       }
 
@@ -541,16 +543,13 @@ const loadRobotModel = () => {
 
   // loader.load("./aubo_description/urdf/aubo_i5.urdf", (result) => {
   loader.load("./kr1/urdf/kr1.urdf", (result) => {
-    // loader.load("./tu_nguyen/urdf/tu_nguyen.urdf", (result) => {
     robot = result;
     console.log(robot);
 
-    robot.scale.set(2, 2, 2); //kr1
-    // robot.scale.set(5, 5, 5);
+    robot.scale.set(2, 2, 2);
     robot.rotation.x = -Math.PI / 2;
     robot.position.set(0, 0, 0);
 
-    // 创建一个 Group 用于组织机器人模型
     robotGroup = new THREE.Group();
     scene.add(robotGroup);
     robotGroup.add(robot);
@@ -558,51 +557,46 @@ const loadRobotModel = () => {
     console.log("robot:", robot);
     console.log("robotGroup:", robotGroup);
 
-    //将模型绑定到变换控制器（
-    // transformControls.attach(robot);
     transformControls.attach(robotGroup);
 
-    let trackedMesh = robot.getObjectByName("Link6"); // 直接尝试获取Link6对象 kr1
-    // let trackedMesh = robot.getObjectByName("link_52"); // 直接尝试获取Link6对象 .
+    let trackedMesh = robot.getObjectByName("Link6");
     console.log(trackedMesh);
 
     if (trackedMesh) {
-      // 挂载 TransformControls 到这个末端 Mesh
-      // transformControls.attach(trackedMesh);
-
       endEffector = trackedMesh;
-      // 获取该 Mesh 的世界坐标，用于显示末端位置
+      trackedMeshForTrajectory.value = trackedMesh;
+
+      // 🔧 先设置初始关节位置（这会影响末端执行器的位置）
+      Object.entries(INITIAL_POSITIONS).forEach(([jointName, value]) => {
+        if (robot.joints[jointName]) {
+          robot.joints[jointName].setJointValue(value);
+        }
+      });
+
+      // 🔧 更新矩阵世界
+      robot.updateMatrixWorld(true);
+      robotGroup.updateMatrixWorld(true);
+
+      // 🔧 现在获取末端执行器的正确位置
       const worldPos = new THREE.Vector3();
       trackedMesh.getWorldPosition(worldPos);
+      const targetPos = threeToTarget(worldPos);
 
-      const targetPos = threeToTarget(worldPos); // 坐标转换
       state.endX = targetPos.x;
       state.endY = targetPos.y;
       state.endZ = targetPos.z;
 
       console.log(
-        "  末端世界坐标：X:",
+        "✅ 初始末端世界坐标：X:",
         state.endX.toFixed(2),
         "Y:",
         state.endY.toFixed(2),
         "Z:",
         state.endZ.toFixed(2)
       );
-
-      // upBones();
-
-      // 可选：将这个 Mesh 也存为全局，用于后续轨迹记录等
-      trackedMeshForTrajectory.value = trackedMesh;
     } else {
       console.warn("未找到 name 为空的末端 Mesh，请检查模型加载结构！");
     }
-
-    // 初始化关节位置（这部分逻辑不变）
-    Object.entries(INITIAL_POSITIONS).forEach(([jointName, value]) => {
-      if (robot.joints[jointName]) {
-        robot.joints[jointName].setJointValue(value);
-      }
-    });
 
     // 设置相机视角
     const box = new THREE.Box3().setFromObject(robot);
@@ -613,8 +607,7 @@ const loadRobotModel = () => {
     camera.lookAt(center);
     controls.update();
 
-    //animate
-    animate()
+    animate();
   });
 };
 
@@ -777,15 +770,6 @@ const handleResize = () => {
 const handleJointChange = ({ jointValues }) => {
   if (!robot) return;
 
-  // const jointOrder = [
-  //   "shoulder_joint",
-  //   "upperArm_joint",
-  //   "foreArm_joint",
-  //   "wrist1_joint",
-  //   "wrist2_joint",
-  //   "wrist3_joint",
-  // ];
-
   const jointOrder = [
     "joint1",
     "joint2",
@@ -795,34 +779,26 @@ const handleJointChange = ({ jointValues }) => {
     "joint6",
   ];
 
-  // const jointOrder = [
-  //   "joint_1",
-  //   "joint_2",
-  //   "joint_3",
-  //   "joint_4",
-  //   "joint_51",
-  //   "joint_52",
-  // ];
-
   jointValues.forEach((value, index) => {
     const jointName = jointOrder[index];
     if (robot.joints[jointName]) {
       robot.joints[jointName].setJointValue(value);
-      console.log("移动了", endEffector);
-      // 更新末端坐标
-      if (endEffector) {
-        const targetPos = threeToTarget(endEffector.position);
-        state.endX = targetPos.x;
-        state.endY = targetPos.y;
-        state.endZ = targetPos.z;
-      }
     }
   });
-  //  记录当前关节角度
-  state.tempJointTrajectory.push([...jointValues]); // 保存当前帧的关节值
+
+  // 🔧 添加矩阵更新
+  robot.updateMatrixWorld(true);
+  if (robotGroup) {
+    robotGroup.updateMatrixWorld(true);
+  }
+
+  // 🔧 更新末端坐标
+  updateEndEffectorPosition();
+
+  // 记录当前关节角度
+  state.tempJointTrajectory.push([...jointValues]);
   recordTrackedMeshTrajectory();
 };
-
 /**
  * 夹爪控制
  */
@@ -838,20 +814,95 @@ const handleGripperChange = (value) => {
 const resetAllJoints = (positions) => {
   if (!robot) return;
 
+  // 🔧 先设置关节角度
   Object.entries(positions).forEach(([jointName, value]) => {
     if (robot.joints[jointName]) {
       robot.joints[jointName].setJointValue(value);
     }
   });
 
-  // 更新末端坐标
+  // 🔧 更新矩阵世界
+  robot.updateMatrixWorld(true);
+  if (robotGroup) {
+    robotGroup.updateMatrixWorld(true);
+  }
+
+  // 🔧 然后更新末端坐标
   if (endEffector) {
-    const targetPos = threeToTarget(endEffector.position);
-    console.log(targetPos);
+    // 确保末端执行器的矩阵也是最新的
+    endEffector.updateMatrixWorld(true);
+
+    const worldPos = new THREE.Vector3();
+    endEffector.getWorldPosition(worldPos);
+    const targetPos = threeToTarget(worldPos);
+
     state.endX = targetPos.x;
     state.endY = targetPos.y;
     state.endZ = targetPos.z;
+
+    console.log(
+      "🔄 复位后末端坐标：X:",
+      state.endX.toFixed(2),
+      "Y:",
+      state.endY.toFixed(2),
+      "Z:",
+      state.endZ.toFixed(2)
+    );
   }
+};
+
+// 🆕 新增：专门更新末端执行器位置的函数
+const updateEndEffectorPosition = () => {
+  if (!endEffector) {
+    console.warn("endEffector 未定义，无法更新坐标");
+    return;
+  }
+
+  // 多次尝试获取坐标，确保模型更新完成
+  const maxRetries = 5;
+  let retryCount = 0;
+
+  const tryUpdatePosition = () => {
+    // 确保末端执行器的矩阵是最新的
+    endEffector.updateMatrixWorld(true);
+
+    // 获取世界坐标
+    const worldPos = new THREE.Vector3();
+    endEffector.getWorldPosition(worldPos);
+
+    const targetPos = threeToTarget(worldPos);
+
+    console.log(`尝试 ${retryCount + 1}: 末端坐标:`, targetPos);
+
+    // 检查坐标是否合理（不是全零）
+    if (
+      Math.abs(targetPos.x) > 0.001 ||
+      Math.abs(targetPos.y) > 0.001 ||
+      Math.abs(targetPos.z) > 0.001
+    ) {
+      state.endX = targetPos.x;
+      state.endY = targetPos.y;
+      state.endZ = targetPos.z;
+      console.log(
+        "✅ 末端坐标更新成功:",
+        state.endX.toFixed(2),
+        state.endY.toFixed(2),
+        state.endZ.toFixed(2)
+      );
+    } else if (retryCount < maxRetries) {
+      retryCount++;
+      // 延迟重试
+      setTimeout(tryUpdatePosition, 50);
+    } else {
+      console.error("❌ 无法获取有效的末端坐标，使用默认值");
+      // 设置一个合理的默认坐标
+      state.endX = 0;
+      state.endY = 0.5; // 假设机械臂有一定高度
+      state.endZ = 0.5;
+    }
+  };
+
+  tryUpdatePosition();
 };
 
 /**
