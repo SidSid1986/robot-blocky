@@ -3,6 +3,7 @@
     <div v-for="(joint, index) in joints" :key="index" class="slider-container">
       <label>{{ joint.label }}</label>
       <input
+        style="width: 100px"
         type="range"
         v-model.number="jointValues[index]"
         :min="joint.min"
@@ -14,18 +15,17 @@
     </div>
 
     <!-- 夹爪控制 -->
-    <div class="slider-container">
-      <div class="button-area">
-        <hr />
-        <el-button @click="startDemo" type="success">
+
+    <div class="button-area">
+      <hr />
+      <!-- <el-button @click="startDemo" type="success">
           <VideoPlay style="width: 1em; height: 1em; margin-right: 8px" />
           开始码垛操作
-        </el-button>
-        <el-button @click="robotReset" type="warning">
-          <Refresh style="width: 1em; height: 1em; margin-right: 8px" />
-          机械臂复位
-        </el-button>
-      </div>
+        </el-button> -->
+      <el-button @click="robotReset" type="warning">
+        <Refresh style="width: 1em; height: 1em; margin-right: 8px" />
+        机械臂复位
+      </el-button>
     </div>
   </div>
 </template>
@@ -82,8 +82,6 @@ const joints = ref([
   { name: "joint6", label: "joint6", min: -3.04, max: 3.04, step: 0.01 },
 ]);
 
- 
-
 // 当前各个关节的值，双向绑定到滑动条
 const jointValues = ref(
   [
@@ -100,15 +98,6 @@ const jointValues = ref(
 const gripperValue = ref(Number(0.0));
 
 // 所有关节的初始位置定义，用于复位时传递给父组件
-// const INITIAL_POSITIONS = {
-//   shoulder_joint: 0.0,
-//   upperArm_joint: 0.0,
-//   foreArm_joint: 1.57,
-//   wrist1_joint: 0.0,
-//   wrist2_joint: 1.57,
-//   wrist3_joint: 0.0,
-//   finger_joint: 0.0, // 夹爪关节
-// };
 
 const INITIAL_POSITIONS = {
   joint1: 0.0,
@@ -121,7 +110,6 @@ const INITIAL_POSITIONS = {
 };
 
 // 每个子数组包含 6 个数字（单位：弧度），依次对应：
-// [shoulder_joint, upperArm_joint, foreArm_joint, wrist1_joint, wrist2_joint, wrist3_joint]
 
 let isDemoRunning = ref(false); // 防止重复点击
 
@@ -236,6 +224,7 @@ const startDemo = () => {
   currentFrameIndex.value = 0;
   smoothDemoLoop(); // 开始插值循环
 };
+
 onMounted(() => {
   // console.log(demoTrajectory);
 });
@@ -253,12 +242,16 @@ onMounted(() => {
 
 .slider-container {
   margin-bottom: 15px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 /* 滑动条标签 */
 .slider-container label {
   display: block;
-  margin-bottom: 5px;
+
   font-weight: bold;
 }
 

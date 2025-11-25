@@ -2,8 +2,8 @@
  * @Author: Sid Li
  * @Date: 2025-10-07 11:02:41
  * @LastEditors: Sid Li
- * @LastEditTime: 2025-11-21 16:29:24
- * @FilePath: \robot-3d-git\src\views\load.vue
+ * @LastEditTime: 2025-11-25 09:13:01
+ * @FilePath: \robot-blocky-git\src\views\load.vue
  * @Description: 
 -->
 <template>
@@ -24,7 +24,8 @@
   <div class="container">
     <!-- <BallOne @getTrajectory="getTrajectory" /> -->
 
-    <RobotModel />
+    <!-- <RobotModel /> -->
+    <RobotModelBlockly />
   </div>
 </template>
 
@@ -34,6 +35,7 @@ import BallOne from "@/components/BallOne.vue";
 import BallTwo from "@/components/BallTwo.vue";
 
 import RobotModel from "@/components/RobotModel.vue";
+import RobotModelBlockly from "@/components/RobotModelBlockly.vue";
 
 const trajectory = ref([]);
 
