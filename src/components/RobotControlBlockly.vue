@@ -22,10 +22,10 @@
         机械臂复位
       </el-button>
 
-      <el-button @click="startDemo" type="primary" style="margin-left: 10px">
+      <!-- <el-button @click="startDemo" type="primary" style="margin-left: 10px">
         <VideoPlay style="width: 1em; height: 1em; margin-right: 8px" />
         开始演示
-      </el-button>
+      </el-button> -->
     </div>
   </div>
 </template>

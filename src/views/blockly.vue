@@ -9,6 +9,7 @@
         <button @click="loadDemo">加载示例</button>
         <button @click="saveWorkspace">保存</button>
         <button @click="loadWorkspace">加载</button>
+        <button @click="wsTest">模拟ws</button>
       </div>
     </div>
 
@@ -337,7 +338,7 @@ const printJoints = (blockId) => {
 
     executionResult.value += `📋 当前关节角度: J1:${jointValues[0]}° J2:${jointValues[1]}° J3:${jointValues[2]}° J4:${jointValues[3]}° J5:${jointValues[4]}° J6:${jointValues[5]}°\n`;
 
-    sendCode();
+    // sendCode();
 
     setTimeout(() => {
       clearHighlight();
@@ -518,6 +519,66 @@ const loadWorkspace = () => {
 const sendCode = () => {
   // 模拟发送代码到机械臂
   console.log("发送关节角度到机械臂:", codeArr.value);
+};
+
+const demoJointData = [
+  [15.0, 25.0, 15.0, -35.0, -25.0, -15.0],
+  [5.0, 20.0, 5.0, -40.0, -30.0, -25.0],
+  [-5.0, 15.0, -5.0, -45.0, -35.0, -35.0],
+  [-15.0, 10.0, -15.0, -50.0, -40.0, -45.0],
+  [-25.0, 5.0, -25.0, -55.0, -45.0, -55.0],
+  [-35.0, 0.0, -35.0, -60.0, -50.0, -65.0],
+  [-45.0, -5.0, -45.0, -65.0, -55.0, -75.0],
+  [-55.0, -10.0, -55.0, -70.0, -60.0, -85.0],
+  [-65.0, -15.0, -65.0, -75.0, -65.0, -95.0],
+  [-75.0, -20.0, -75.0, -80.0, -70.0, -105.0],
+  [-83.08, -24.64, -83.08, -83.08, -74.48, -111.73],
+];
+
+let simpleTimer = null;
+
+const wsTest = () => {
+  if (simpleTimer) {
+    clearInterval(simpleTimer);
+    simpleTimer = null;
+    console.log("⏹️ 停止");
+    executionResult.value += "⏹️ 模拟已停止\n";
+    return;
+  }
+
+  let index = 0;
+  console.log("🌐 开始模拟赋值");
+  executionResult.value += "🌐 开始模拟赋值\n";
+
+  // 立即执行一次
+  codeArr.value = [...demoJointData[0]];
+  console.log("📥 数据 1:", demoJointData[0]);
+  executionResult.value += `📥 数据 1: [${demoJointData[0].join(', ')}]\n`;
+
+  // 每0.5秒换一组数据
+  simpleTimer = setInterval(() => {
+    // 检查是否已经执行到最后一组数据
+    if (index >= demoJointData.length - 1) {
+      // 执行最后一组数据
+      codeArr.value = [...demoJointData[index]];
+      console.log(`📥 数据 ${index + 1}:`, demoJointData[index]);
+      executionResult.value += `📥 数据 ${index + 1}: [${demoJointData[index].join(', ')}]\n`;
+      console.log("✅ 模拟完成，已停止");
+      executionResult.value += "✅ 模拟完成，已停止\n";
+      
+      // 清除计时器
+      clearInterval(simpleTimer);
+      simpleTimer = null;
+      return;
+    }
+    
+    // 正常执行当前数据
+    codeArr.value = [...demoJointData[index]];
+    console.log(`📥 数据 ${index + 1}:`, demoJointData[index]);
+    executionResult.value += `📥 数据 ${index + 1}: [${demoJointData[index].join(', ')}]\n`;
+    
+    index++;
+  }, 500);
 };
 
 onMounted(() => {
