@@ -12,7 +12,6 @@
         <button @click="wsTest">模拟ws</button>
       </div>
     </div>
-
     <div class="container">
       <!-- Blockly容器 -->
       <div class="blockly-container">
@@ -47,54 +46,58 @@
         </div>
 
         <div class="code-content">
-          <div class="line-numbers">
-            <div
-              v-for="(line, index) in codeLines"
-              :key="index"
-              class="line-number"
-              :class="{ active: selectedLine === index }"
-              @click="selectLine(index)"
-            >
-              {{ index + 1 }}
-            </div>
-          </div>
+          <!-- 表头 -->
+          <!-- <div class="code-header-row">
+            <div class="line-numbers-header">#</div>
+            <div class="code-lines-header">代码</div>
+          </div> -->
 
-          <div
-            class="code-lines"
-            @dragover.prevent="handleContainerDragOver"
-            @drop="handleContainerDrop"
-          >
-            <div
-              v-for="(line, index) in codeLines"
-              :key="line.id"
-              class="code-line"
-              :class="{
-                selected: selectedLine === index,
-                dragging: dragOverIndex === index,
-              }"
-              @click="selectLine(index)"
-              @dragover="handleLineDragOver($event, index)"
-              @dragleave="handleDragLeave"
-              @drop="handleLineDrop($event, index)"
-            >
-              <div class="line-content">
-                {{ line.text || "空行" }}
+          <!-- 可滚动的代码区域 -->
+          <div class="scroll-container" ref="scrollContainer">
+            <div class="code-lines-wrapper">
+              <div
+                v-for="(line, index) in codeLines"
+                :key="line.id"
+                class="code-line-row"
+                :class="{
+                  selected: selectedLine === index,
+                  dragging: dragOverIndex === index,
+                }"
+                @click="selectLine(index)"
+                @dragover="handleLineDragOver($event, index)"
+                @dragleave="handleDragLeave"
+                @drop="handleLineDrop($event, index)"
+              >
+                <div
+                  class="line-number"
+                  :class="{ active: selectedLine === index }"
+                  @click="selectLine(index)"
+                >
+                  {{ index + 1 }}
+                </div>
+                <div class="code-line">
+                  <div class="line-content">
+                    {{ line.text || "空行" }}
+                  </div>
+                  <div class="line-actions">
+                    <button @click.stop="deleteLine(index)" class="delete-btn">
+                      ×
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div class="line-actions">
-                <button @click.stop="deleteLine(index)" class="delete-btn">
-                  ×
-                </button>
-              </div>
-            </div>
 
-            <!-- 拖拽插入指示器 -->
-            <div
-              v-if="showInsertIndicator"
-              class="insert-indicator"
-              :style="{ top: indicatorPosition + 'px' }"
-            ></div>
+              <!-- 拖拽插入指示器 -->
+              <div
+                v-if="showInsertIndicator"
+                class="insert-indicator"
+                :style="{ top: indicatorPosition + 'px' }"
+              ></div>
+            </div>
           </div>
         </div>
+
+        <div class="code-setting"></div>
       </div>
 
       <div class="robot-model-container">
@@ -111,9 +114,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, nextTick } from "vue";
 import RobotModelBlockly from "@/components/RobotModelBlockly.vue";
-import * as Blockly from "blockly";
-import { javascriptGenerator } from "blockly/javascript";
-import "blockly/blocks";
 
 // 工具箱项目配置
 const toolboxItems = ref([
@@ -151,6 +151,9 @@ let draggedItem = null;
 const codeArr = ref([]);
 const jointValues = reactive([0, 0, 0, 0, 0, 0]);
 const currentExecutingBlock = ref("");
+
+// 滚动容器引用
+const scrollContainer = ref(null);
 
 onMounted(() => {
   // 初始化一些示例代码
@@ -193,15 +196,17 @@ const handleLineDragOver = async (event, index) => {
   await nextTick();
   const lineElement = event.currentTarget;
   const rect = lineElement.getBoundingClientRect();
-  const containerRect = lineElement.parentElement.getBoundingClientRect();
+  const containerRect = lineElement
+    .closest(".scroll-container")
+    .getBoundingClientRect();
 
-  // 改进的判断逻辑：基于鼠标相对于行的位置来判断插入位置
+  //  基于鼠标相对于行的位置来判断插入位置
   const mouseY = event.clientY - containerRect.top;
   const lineTop = rect.top - containerRect.top;
   const lineHeight = rect.height;
   const lineCenter = lineTop + lineHeight / 2;
 
-  // 明确的计算逻辑：鼠标在上半部分插入到当前行之前，在下半部分插入到当前行之后
+  //  鼠标在上半部分插入到当前行之前，在下半部分插入到当前行之后
   if (mouseY < lineCenter) {
     // 插入到当前行之前（当前行索引位置）
     indicatorPosition.value = lineTop;
@@ -585,6 +590,9 @@ const wsTest = () => {
   padding: 15px;
   border-bottom: 1px solid #dee2e6;
   background: #f8f9fa;
+  height: 3vh;
+  box-sizing: border-box;
+  // border: 1px solid red;
 }
 
 .code-header h3 {
@@ -608,73 +616,115 @@ const wsTest = () => {
 }
 
 .code-content {
+  overflow: visible;
+  height: 50vh;
   display: flex;
-  flex: 1;
-  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  background: white;
 }
 
-.line-numbers {
-  width: 50px;
+/* 表头样式 */
+.code-header-row {
+  display: flex;
   background: #f8f9fa;
-  border-right: 1px solid #dee2e6;
-  padding: 10px 5px;
-  overflow-y: auto;
+  border-bottom: 1px solid #dee2e6;
+  height: 35px;
+  flex-shrink: 0;
+
+  .line-numbers-header {
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #6c757d;
+    border-right: 1px solid #dee2e6;
+    background: #f1f3f4;
+    font-weight: bold;
+  }
+
+  .code-lines-header {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: bold;
+  }
 }
 
+/* 滚动容器 */
+.scroll-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+.code-lines-wrapper {
+  position: relative;
+  min-height: 100%;
+}
+
+/* 代码行行容器 */
+.code-line-row {
+  display: flex;
+  min-height: 40px;
+  border-bottom: 1px solid #f1f3f4;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: #f8f9fa;
+  }
+
+  &.selected {
+    background: #e3f2fd;
+  }
+
+  &.dragging {
+    background: #fff3cd;
+  }
+}
+
+/* 行号样式 */
 .line-number {
-  height: 40px;
+  width: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   color: #6c757d;
   cursor: pointer;
-  border-radius: 4px;
-  /* margin-bottom: 2px; */
-  /* background-color: red; */
-  box-sizing: border-box;
+  border-right: 1px solid #dee2e6;
+  background: #f8f9fa;
+  flex-shrink: 0;
+  user-select: none;
+
+  &.active {
+    background: #007bff;
+    color: white;
+  }
+
+  &:hover {
+    background: #e9ecef;
+  }
 }
 
-.line-number:hover {
-  background: #e9ecef;
-}
-
-.line-number.active {
-  background: #007bff;
-  color: white;
-}
-
-.code-lines {
-  flex: 1;
-  position: relative;
-  overflow-y: auto;
-  padding: 10px 0;
-}
-
+/* 代码行样式 */
 .code-line {
-  box-sizing: border-box;
-  height: 40px;
+  flex: 1;
   display: flex;
   align-items: center;
   padding: 0 15px;
-  border-bottom: 1px solid #f1f3f4;
-  cursor: pointer;
   position: relative;
-  transition: background-color 0.2s;
-  /* background-color: red; */
-}
+  border-left: 3px solid transparent;
 
-.code-line:hover {
-  background: #f8f9fa;
-}
-
-.code-line.selected {
-  background: #e3f2fd;
-  border-left: 3px solid #2196f3;
-}
-
-.code-line.dragging {
-  background: #fff3cd;
+  .selected & {
+    border-left: 3px solid #2196f3;
+  }
 }
 
 .line-content {
@@ -687,10 +737,10 @@ const wsTest = () => {
 .line-actions {
   opacity: 0;
   transition: opacity 0.2s;
-}
 
-.code-line:hover .line-actions {
-  opacity: 1;
+  .code-line-row:hover & {
+    opacity: 1;
+  }
 }
 
 .delete-btn {
@@ -705,10 +755,10 @@ const wsTest = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
 
-.delete-btn:hover {
-  background: #c82333;
+  &:hover {
+    background: #c82333;
+  }
 }
 
 /* 插入指示器 */
