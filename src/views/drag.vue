@@ -91,7 +91,12 @@
               <div
                 v-if="showInsertIndicator"
                 class="insert-indicator"
-                :style="{ top: indicatorPosition + 'px' }"
+                :style="{
+                  top: indicatorPosition + 'px',
+                  position: 'absolute',
+                  left: '0',
+                  right: '0',
+                }"
               ></div>
             </div>
           </div>
@@ -674,21 +679,27 @@ const handleLineDragOver = async (event, index) => {
 
   await nextTick();
   const lineElement = event.currentTarget;
-  const rect = lineElement.getBoundingClientRect();
-  const containerRect = lineElement
-    .closest(".scroll-container")
-    .getBoundingClientRect();
+  const container = lineElement.closest(".scroll-container");
+  const wrapper = container.querySelector(".code-lines-wrapper");
 
+  // 获取容器和包装器的位置信息
+  const containerRect = container.getBoundingClientRect();
+  const wrapperRect = wrapper.getBoundingClientRect();
+
+  // 计算鼠标在容器内的相对位置
   const mouseY = event.clientY - containerRect.top;
-  const lineTop = rect.top - containerRect.top;
-  const lineHeight = rect.height;
-  const lineCenter = lineTop + lineHeight / 2;
+  const lineRect = lineElement.getBoundingClientRect();
 
-  if (mouseY < lineCenter) {
-    indicatorPosition.value = lineTop;
+  // 计算行相对于包装器的位置
+  const lineTopRelative = lineRect.top - wrapperRect.top;
+  const lineHeight = lineRect.height;
+  const lineCenter = lineTopRelative + lineHeight / 2;
+
+  if (mouseY < lineRect.top - containerRect.top + lineHeight / 2) {
+    indicatorPosition.value = lineTopRelative; // 在行上方插入
     dropPosition.value = 1;
   } else {
-    indicatorPosition.value = lineTop + lineHeight;
+    indicatorPosition.value = lineTopRelative + lineHeight; // 在行下方插入
     dropPosition.value = 3;
   }
 
