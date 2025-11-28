@@ -270,8 +270,7 @@
       link="Link3" />
     <child
       link="Link4" />
-    <axis
-      xyz="0.97675 -0.14405 0.15878" />
+    <axis xyz="0 1 0" />
     <limit
       lower="-3.14"
       upper="3.14"
@@ -328,8 +327,7 @@
       link="Link4" />
     <child
       link="Link5" />
-    <axis
-      xyz="0.041475 0.85361 0.51927" />
+  <axis xyz="0 0 1" />
     <limit
       lower="-3.14"
       upper="3.14"
@@ -386,8 +384,7 @@
       link="Link5" />
     <child
       link="Link6" />
-    <axis
-      xyz="0.95243 -0.19082 0.23761" />
+    <axis xyz="0 1 0" />
     <limit
       lower="-3.14"
       upper="3.14"
