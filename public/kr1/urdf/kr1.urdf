@@ -23,10 +23,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 3.1416" />
+        rpy="1.57 0 3.1416" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/base_link.STL" />
+          filename="../meshes-glb/base_link.glb" />
       </geometry>
       <material
         name="">
@@ -40,7 +40,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/base_link.STL" />
+          filename="../meshes-glb/base_link.glb" />
       </geometry>
     </collision>
   </link>
@@ -64,10 +64,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link1.STL" />
+          filename="../meshes-glb/Link1.glb" />
       </geometry>
       <material
         name="">
@@ -81,7 +81,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link1.STL" />
+          filename="../meshes-glb/Link1.glb" />
       </geometry>
     </collision>
   </link>
@@ -89,7 +89,7 @@
     name="joint1"
     type="revolute">
     <origin
-      xyz="0 0 0.2452"
+      xyz="0 0 0.144 "
       rpy="0 0 3.1416" />
     <parent
       link="base_link" />
@@ -122,10 +122,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link2.STL" />
+          filename="../meshes-glb/Link2.glb" />
       </geometry>
       <material
         name="">
@@ -139,7 +139,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link2.STL" />
+          filename="../meshes-glb/Link2.glb" />
       </geometry>
     </collision>
   </link>
@@ -147,7 +147,8 @@
     name="joint2"
     type="revolute">
     <origin
-      xyz="-0.14532 0.11129 0.2698"
+     
+      xyz="0 -0.06 0.097"
       rpy="0 0 0" />
     <parent
       link="Link1" />
@@ -180,10 +181,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link3.STL" />
+          filename="../meshes-glb/Link3.glb" />
       </geometry>
       <material
         name="">
@@ -197,7 +198,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link3.STL" />
+          filename="../meshes-glb/Link3.glb" />
       </geometry>
     </collision>
   </link>
@@ -205,7 +206,7 @@
     name="joint3"
     type="revolute">
     <origin
-      xyz="-0.55606 0.091003 0.53944"
+      xyz="0 0.005 0.40"
       rpy="0 0 0" />
     <parent
       link="Link2" />
@@ -238,10 +239,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link4.STL" />
+          filename="../meshes-glb/Link4.glb" />
       </geometry>
       <material
         name="">
@@ -255,7 +256,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link4.STL" />
+          filename="../meshes-glb/Link4.glb" />
       </geometry>
     </collision>
   </link>
@@ -263,7 +264,7 @@
     name="joint4"
     type="revolute">
     <origin
-      xyz="-0.33086 -0.050063 0.10046"
+      xyz="0 -0.005 0.33"
       rpy="0 0 0" />
     <parent
       link="Link3" />
@@ -296,10 +297,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link5.STL" />
+          filename="../meshes-glb/Link5.glb" />
       </geometry>
       <material
         name="">
@@ -313,7 +314,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link5.STL" />
+          filename="../meshes-glb/Link5.glb" />
       </geometry>
     </collision>
   </link>
@@ -321,7 +322,7 @@
     name="joint5"
     type="revolute">
     <origin
-      xyz="-0.55081 0.0018802 -0.13685"
+      xyz="0 -0.071 0.05"
       rpy="0 0 0" />
     <parent
       link="Link4" />
@@ -354,10 +355,10 @@
     <visual>
       <origin
         xyz="0 0 0"
-        rpy="0 0 0" />
+        rpy="1.57 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link6.STL" />
+          filename="../meshes-glb/Link6.glb" />
       </geometry>
       <material
         name="">
@@ -371,7 +372,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://kr1/meshes/Link6.STL" />
+          filename="../meshes-glb/Link6.glb" />
       </geometry>
     </collision>
   </link>
@@ -379,7 +380,7 @@
     name="joint6"
     type="revolute">
     <origin
-      xyz="-0.12856 0.10531 0.0149"
+      xyz="0 -0.05 0.057"
       rpy="0 0 0" />
     <parent
       link="Link5" />

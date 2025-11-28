@@ -74,6 +74,10 @@ import {
 } from "vue";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+
 import { TransformControls } from "three/examples/jsm/controls/TransformControls";
 import {
   CSS2DRenderer,
@@ -256,6 +260,78 @@ const threeToTarget = (threeVec3) => {
 /**
  * 初始化3D场景
  */
+// const initScene = () => {
+//   // 创建场景
+//   scene = new THREE.Scene();
+//   scene.background = new THREE.Color(0xeeeeee);
+
+//   // 创建相机
+//   camera = new THREE.PerspectiveCamera(
+//     85,
+//     container.value.clientWidth / container.value.clientHeight,
+//     0.01,
+//     1000
+//   );
+
+//   // 创建渲染器
+//   renderer = new THREE.WebGLRenderer({
+//     antialias: true,
+//     powerPreference: "high-performance",
+//     logarithmicDepthBuffer: true,
+//   });
+//   renderer.setSize(container.value.clientWidth, container.value.clientHeight);
+//   renderer.setPixelRatio(window.devicePixelRatio);
+//   renderer.shadowMap.enabled = true;
+//   container.value.appendChild(renderer.domElement);
+
+//   // 创建标签渲染器（用于坐标轴标签）
+//   labelRenderer = new CSS2DRenderer();
+//   labelRenderer.setSize(
+//     container.value.clientWidth,
+//     container.value.clientHeight
+//   );
+//   labelRenderer.domElement.style.position = "absolute";
+//   labelRenderer.domElement.style.top = "0";
+//   labelRenderer.domElement.style.pointerEvents = "none";
+//   container.value.appendChild(labelRenderer.domElement);
+
+//   // 光源配置
+//   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+//   directionalLight.position.set(10, 20, 10);
+//   directionalLight.castShadow = true;
+//   directionalLight.shadow.mapSize.set(2048, 2048);
+//   scene.add(directionalLight);
+
+//   const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.9);
+//   directionalLight2.position.set(-8, 15, -8);
+//   scene.add(directionalLight2);
+
+//   const ambientLight = new THREE.AmbientLight(0x606060, 1.3);
+//   scene.add(ambientLight);
+
+//   // 网格地面
+//   const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x888888);
+//   gridHelper.position.y = -0.01;
+//   scene.add(gridHelper);
+
+//   // 添加带标签的坐标轴
+//   addAxesWithLabels();
+
+//   // 轨道控制器
+//   controls = new OrbitControls(camera, renderer.domElement);
+//   controls.enableDamping = true;
+//   controls.dampingFactor = 0.05;
+
+//   // 加载机器人模型
+//   loadRobotModel();
+
+//   // 变换控制器（用于拖拽末端执行器）
+//   // initTransformControls();
+
+//   // 启动渲染循环
+//   // animate();
+// };
+
 const initScene = () => {
   // 创建场景
   scene = new THREE.Scene();
@@ -416,14 +492,58 @@ const recordTrackedMeshTrajectory = () => {
     updateTempTrajectoryLine(); // 实时画出轨迹线（黄色）
   }
 };
+
 /**
- * 加载机器人模型
+ * 加载机器人模型（修改后支持GLB）
  */
 const loadRobotModel = () => {
+  console.log("加载机器人模型...");
+  // 1. 配置GLTF+DRACO加载器
+  const gltfLoader = new GLTFLoader();
+  console.log(gltfLoader);
+  try {
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath(
+      "https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/libs/draco/"
+    );
+    gltfLoader.setDRACOLoader(dracoLoader);
+
+    console.log(111);
+  } catch (e) {
+    console.warn("DRACO加载失败:", e);
+  }
+
   const loader = new URDFLoader();
+  loader.packages = { kr1: "/kr1" }; // 关键：将package路径设为根绝对路径
 
-  loader.packages = { kr1: "/kr1" };
+  // 2. 修复路径解析（统一为根绝对路径）
+  loader.loadMeshCb = (path, manager, onComplete) => {
+    // 将"./kr1/urdf/../meshes-glb/xxx.glb" → "/kr1/meshes-glb/xxx.glb"
+    let glbPath = path.replace(/^\.+/, ""); // 去掉开头的"./"
+    glbPath = glbPath.startsWith("/") ? glbPath : `/${glbPath}`; // 确保以"/"开头
+    console.log("实际加载路径:", glbPath); // 验证路径是否为"/kr1/meshes-glb/xxx.glb"
 
+    // 加载GLB模型
+    gltfLoader.load(
+      glbPath,
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(0.001, 0.001, 0.001); // 毫米转米
+        onComplete(model);
+      },
+      undefined,
+      (error) => {
+        console.error(`加载GLB失败（${glbPath}）:`, error);
+        const placeholder = new THREE.Mesh(
+          new THREE.BoxGeometry(0.1, 0.1, 0.1),
+          new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+        );
+        onComplete(placeholder);
+      }
+    );
+  };
+
+  // 3. 原有逻辑保持不变
   const INITIAL_POSITIONS = {
     joint1: 0.0, // 底座关节给一个小角度
     joint2: 0.0, // 上臂抬起
@@ -433,7 +553,6 @@ const loadRobotModel = () => {
     joint6: 0.0,
   };
 
-  // loader.load("./aubo_description/urdf/aubo_i5.urdf", (result) => {
   loader.load("./kr1/urdf/kr1.urdf", (result) => {
     robot = result;
     console.log(robot);

@@ -671,6 +671,7 @@ const handleDragEnd = (event) => {
 };
 
 // 处理拖拽经过代码行
+// 处理拖拽经过代码行 - 最佳实践版本
 const handleLineDragOver = async (event, index) => {
   event.preventDefault();
   event.stopPropagation();
@@ -678,34 +679,57 @@ const handleLineDragOver = async (event, index) => {
   dropPosition.value = 1;
 
   await nextTick();
+
+  //   1. 获取关键DOM元素
   const lineElement = event.currentTarget;
   const container = lineElement.closest(".scroll-container");
   const wrapper = container.querySelector(".code-lines-wrapper");
 
-  // 获取容器和包装器的位置信息
+  //   2. 安全检查
+  if (!container || !wrapper) {
+    console.warn("无法找到滚动容器或包装器");
+    return;
+  }
+
+  //   3. 获取所有需要的边界信息（
   const containerRect = container.getBoundingClientRect();
   const wrapperRect = wrapper.getBoundingClientRect();
-
-  // 计算鼠标在容器内的相对位置
-  const mouseY = event.clientY - containerRect.top;
   const lineRect = lineElement.getBoundingClientRect();
 
-  // 计算行相对于包装器的位置
-  const lineTopRelative = lineRect.top - wrapperRect.top;
+  //   4. 统一坐标系：将所有位置转换为相对于 wrapper 的位置
+  const lineTopInWrapper = lineRect.top - wrapperRect.top;
   const lineHeight = lineRect.height;
-  const lineCenter = lineTopRelative + lineHeight / 2;
+  const lineCenterInWrapper = lineTopInWrapper + lineHeight / 2;
 
-  if (mouseY < lineRect.top - containerRect.top + lineHeight / 2) {
-    indicatorPosition.value = lineTopRelative; // 在行上方插入
+  //   5. 计算鼠标在容器内的位置（用于判断上下）
+  const mouseYInContainer = event.clientY - containerRect.top;
+  const lineTopInContainer = lineRect.top - containerRect.top;
+  const lineCenterInContainer = lineTopInContainer + lineHeight / 2;
+
+  //   6. 智能判断插入位置
+  // 使用容器内的位置来判断，更准确
+  if (mouseYInContainer < lineCenterInContainer) {
+    indicatorPosition.value = lineTopInWrapper; // 在行上方插入
     dropPosition.value = 1;
   } else {
-    indicatorPosition.value = lineTopRelative + lineHeight; // 在行下方插入
+    indicatorPosition.value = lineTopInWrapper + lineHeight; // 在行下方插入
     dropPosition.value = 3;
   }
 
+  // 🔥 7. 显示指示器
   showInsertIndicator.value = true;
-};
 
+  // 🔥 8. 调试信息（开发时可开启）
+  if (process.env.NODE_ENV === "development") {
+    console.log({
+      lineIndex: index,
+      mouseYInContainer,
+      lineCenterInContainer,
+      indicatorPosition: indicatorPosition.value,
+      dropPosition: dropPosition.value,
+    });
+  }
+};
 // 处理拖拽离开代码行
 const handleDragLeave = (event) => {
   if (!event.currentTarget.contains(event.relatedTarget)) {
@@ -1093,12 +1117,16 @@ onUnmounted(() => {
 .scroll-container {
   flex: 1;
   overflow: auto;
-  position: relative;
+  position: relative; /*   建立定位上下文 */
+  /* 可选：添加一些视觉反馈 */
+  scroll-behavior: smooth;
 }
 
 .code-lines-wrapper {
-  position: relative;
+  position: relative; /*   为绝对定位的子元素提供参考 */
   min-height: 100%;
+  /* 确保有足够的空间进行拖拽操作 */
+  padding: 4px 0;
 }
 
 /* 代码行行容器 */
@@ -1118,8 +1146,20 @@ onUnmounted(() => {
   }
 
   &.dragging {
-    background: #fff3cd;
+    background: rgba(0, 123, 255, 0.05);
+    box-shadow: inset 0 0 0 2px rgba(0, 123, 255, 0.2);
   }
+}
+
+.code-line-row.dragging::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #007bff;
+  z-index: 5;
 }
 
 /* 行号样式 */
@@ -1196,13 +1236,17 @@ onUnmounted(() => {
 
 /* 插入指示器 */
 .insert-indicator {
-  position: absolute;
+  position: absolute; /*   相对于 wrapper 定位 */
   left: 0;
   right: 0;
-  height: 2px;
-  background: #007bff;
+  height: 3px; /*  稍微加粗， */
+  background: linear-gradient(90deg, #007bff, #0056b3); /*   渐变效果 */
   z-index: 10;
-  box-shadow: 0 0 4px #007bff;
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.5); /*   增强阴影效果 */
+  border-radius: 1px;
+
+  /*   动画效果 */
+  transition: all 0.15s ease-out;
 }
 
 /* 机械臂 */
